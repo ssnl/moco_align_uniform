@@ -158,7 +158,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> creating model '{}'".format(args.arch))
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
+        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, mlp=args.mlp)
     print(model)
 
     if args.distributed:
@@ -189,9 +189,6 @@ def main_worker(gpu, ngpus_per_node, args):
         # this code only supports DistributedDataParallel.
         raise NotImplementedError("Only DistributedDataParallel is supported.")
 
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
-
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -214,6 +211,7 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
+    cudnn.deterministic = True
     cudnn.benchmark = True
 
     # Data loading code
@@ -263,7 +261,7 @@ def main_worker(gpu, ngpus_per_node, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, optimizer, epoch, args)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
@@ -275,7 +273,7 @@ def main_worker(gpu, ngpus_per_node, args):
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -298,14 +296,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
-        # compute output
-        output, target = model(im_q=images[0], im_k=images[1])
-        loss = criterion(output, target)
+        # compute losses
+        moco_losses = model(im_q=images[0], im_k=images[1])
+        loss = moco_losses.combine(contr_w=1, align_w=0, unif_w=0)
 
-        # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        # acc1/acc5 are (K+1)-way contrast classifier accuracy
         losses.update(loss.item(), images[0].size(0))
+        acc1, acc5 = accuracy(moco_losses.logits_contr, scalar_target=0, topk=(1, 5))
         top1.update(acc1[0], images[0].size(0))
         top5.update(acc5[0], images[0].size(0))
 
@@ -381,15 +379,15 @@ def adjust_learning_rate(optimizer, epoch, args):
         param_group['lr'] = lr
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, scalar_target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)
-        batch_size = target.size(0)
+        batch_size = output.size(0)
 
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
+        correct = pred.eq(scalar_target)
 
         res = []
         for k in topk:

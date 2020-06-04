@@ -1,15 +1,40 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import typing
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+
+class MoCoLosses(typing.NamedTuple):
+    loss_contr: typing.Optional[torch.Tensor] = None
+    logits_contr: typing.Optional[torch.Tensor] = None
+    loss_align: typing.Optional[torch.Tensor] = None
+    loss_unif: typing.Optional[torch.Tensor] = None
+
+    def combine(self, contr_w: float=1, align_w: float=1, unif_w: float=1) -> torch.Tensor:
+        assert not contr_w == align_w == unif_w == 0
+        l = 0
+        if contr_w != 0:
+            assert self.loss_contr is not None
+            l += contr_w * self.loss_contr
+        if align_w != 0:
+            assert self.loss_align is not None
+            l += align_w * self.loss_align
+        if unif_w != 0:
+            assert self.loss_unif is not None
+            l += unif_w * self.loss_unif
+        return l
 
 
 class MoCo(nn.Module):
-    """
+    r"""
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=False):
-        """
+    def __init__(self, base_encoder, dim=128, K=65536, m=0.999,
+                 contr_tau=0.07, align_alpha=None, unif_t=None, mlp=False):
+        r"""
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
         m: moco momentum of updating key encoder (default: 0.999)
@@ -19,7 +44,19 @@ class MoCo(nn.Module):
 
         self.K = K
         self.m = m
-        self.T = T
+
+        # l_contr
+        self.contr_tau = contr_tau
+        if contr_tau is not None:
+            self.register_buffer('scalar_label', torch.zeros((), dtype=torch.long))
+        else:
+            self.register_parameter('scalar_label', None)
+
+        # l_align
+        self.align_alpha = align_alpha
+
+        # l_unif
+        self.unif_t = unif_t
 
         # create the encoders
         # num_classes is the output fc dimension
@@ -43,7 +80,7 @@ class MoCo(nn.Module):
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
-        """
+        r"""
         Momentum update of the key encoder
         """
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
@@ -67,7 +104,7 @@ class MoCo(nn.Module):
 
     @torch.no_grad()
     def _batch_shuffle_ddp(self, x):
-        """
+        r"""
         Batch shuffle, for making use of BatchNorm.
         *** Only support DistributedDataParallel (DDP) model. ***
         """
@@ -95,7 +132,7 @@ class MoCo(nn.Module):
 
     @torch.no_grad()
     def _batch_unshuffle_ddp(self, x, idx_unshuffle):
-        """
+        r"""
         Undo batch shuffle.
         *** Only support DistributedDataParallel (DDP) model. ***
         """
@@ -113,12 +150,12 @@ class MoCo(nn.Module):
         return x_gather[idx_this]
 
     def forward(self, im_q, im_k):
-        """
+        r"""
         Input:
             im_q: a batch of query images
             im_k: a batch of key images
         Output:
-            logits, targets
+            MoCoLosses object containing the loss terms (and logits if contrastive loss is used)
         """
 
         # compute query features
@@ -146,24 +183,30 @@ class MoCo(nn.Module):
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
 
         # logits: Nx(1+K)
-        logits = torch.cat([l_pos, l_neg], dim=1)
+        logits_contr = torch.cat([l_pos, l_neg], dim=1)
 
         # apply temperature
-        logits /= self.T
+        logits_contr /= self.contr_tau
 
-        # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+        # loss_contr
+        loss_contr = F.cross_entropy(logits_contr, self.scalar_label.expand(logits_contr.shape[0]))
+
+        # loss_align
+        loss_align = None
+
+        # loss_unif
+        loss_unif = None
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k)
 
-        return logits, labels
+        return MoCoLosses(loss_contr=loss_contr, logits_contr=logits_contr, loss_align=loss_align, loss_unif=loss_unif)
 
 
 # utils
 @torch.no_grad()
 def concat_all_gather(tensor):
-    """
+    r"""
     Performs all_gather operation on the provided tensors.
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
