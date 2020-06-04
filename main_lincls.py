@@ -100,6 +100,21 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
+    save_folder_terms = [
+        f'b{args.batch_size}',
+        f'lr{args.lr:g}',
+        f'e{",".join(map(str, args.schedule))},{args.epochs}',
+    ]
+
+    args.save_folder = os.path.join(
+        os.path.split(args.pretrained)[0],
+        'lincls',
+        os.path.basename(args.pretrained),
+        '_'.join(save_folder_terms),
+    )
+    os.makedirs(args.save_folder, exist_ok=True)
+    print(f"save_folder: '{args.save_folder}'")
+
     if args.dist_url == "env://" and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
 
@@ -294,13 +309,17 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
+            save_filename = os.path.join(args.save_folder, 'checkpoint_{:04d}.pth.tar'.format(epoch))
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
+                'acc1': acc1,
+                'acc5': acc5,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best)
+            }, is_best, save_filename)
+            print(f"saved to '{save_filename}'")
             if epoch == args.start_epoch:
                 sanity_check(model.state_dict(), args.pretrained)
 
@@ -404,11 +423,11 @@ def validate(val_loader, model, criterion, args):
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, os.path.join(os.path.split(filename)[0], 'model_best.pth.tar'))
 
 
 def sanity_check(state_dict, pretrained_weights):
-    """
+    r"""
     Linear classifier should not change any weights other than the linear layer.
     This sanity check asserts nothing wrong happens (e.g., BN stats updated).
     """

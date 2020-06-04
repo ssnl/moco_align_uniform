@@ -79,15 +79,25 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 
-# moco specific configs:
+# Loss specific configs:
 parser.add_argument('--moco-dim', default=128, type=int,
                     help='feature dimension (default: 128)')
 parser.add_argument('--moco-k', default=65536, type=int,
                     help='queue size; number of negative keys (default: 65536)')
 parser.add_argument('--moco-m', default=0.999, type=float,
                     help='moco momentum of updating key encoder (default: 0.999)')
-parser.add_argument('--moco-t', default=0.07, type=float,
+parser.add_argument('--moco-contr-w', default=0, type=float,
+                    help='contrastive weight (default: 0)')
+parser.add_argument('--moco-contr-tau', default=0.07, type=float,
                     help='softmax temperature (default: 0.07)')
+parser.add_argument('--moco-align-w', default=3, type=float,
+                    help='align weight (default: 3)')
+parser.add_argument('--moco-align-alpha', default=2, type=float,
+                    help='alignment alpha (default: 2)')
+parser.add_argument('--moco-unif-w', default=1, type=float,
+                    help='uniform weight (default: 1)')
+parser.add_argument('--moco-unif-t', default=3, type=float,
+                    help='uniformity t (default: 3)')
 
 # options for moco v2
 parser.add_argument('--mlp', action='store_true',
@@ -114,6 +124,44 @@ def main():
     if args.gpu is not None:
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
+
+    save_folder_terms = [
+        f'mocom{args.moco_m:g}',
+    ]
+
+    if args.moco_contr_w != 0:
+        save_folder_terms.append(f'contr{args.moco_contr_w:g}tau{args.moco_contr_tau:g}')
+    else:
+        args.moco_contr_tau = None
+
+    if args.moco_align_w != 0:
+        save_folder_terms.append(f'align{args.moco_align_w:g}alpha{args.moco_align_alpha:g}')
+    else:
+        args.moco_align_alpha = None
+
+    if args.moco_unif_w != 0:
+        save_folder_terms.append(f'unif{args.moco_unif_w:g}t{args.moco_unif_t:g}')
+    else:
+        args.moco_unif_t = None
+
+    if args.mlp:
+        save_folder_terms.append('mlp')
+
+    if args.aug_plus:
+        save_folder_terms.append('aug+')
+
+    if args.cos:
+        save_folder_terms.append('cos')
+
+    save_folder_terms.extend([
+        f'b{args.batch_size}',
+        f'lr{args.lr:g}',
+    ])
+
+
+    args.save_folder = os.path.join('results', '_'.join(save_folder_terms))
+    os.makedirs(args.save_folder, exist_ok=True)
+    print(f"save_folder: '{args.save_folder}'")
 
     if args.dist_url == "env://" and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
@@ -158,7 +206,11 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> creating model '{}'".format(args.arch))
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, mlp=args.mlp)
+        args.moco_dim, args.moco_k, args.moco_m,
+        contr_tau=args.moco_contr_tau,
+        align_alpha=args.moco_align_alpha,
+        unif_t=args.moco_unif_t,
+        mlp=args.mlp)
     print(model)
 
     if args.distributed:
@@ -265,12 +317,14 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
+            save_filename = os.path.join(args.save_folder, 'checkpoint_{:04d}.pth.tar'.format(epoch))
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
-            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+            }, filename=save_filename)
+            print(f"saved to '{save_filename}'")
 
 
 def train(train_loader, model, optimizer, epoch, args):
@@ -298,7 +352,7 @@ def train(train_loader, model, optimizer, epoch, args):
 
         # compute losses
         moco_losses = model(im_q=images[0], im_k=images[1])
-        loss = moco_losses.combine(contr_w=1, align_w=0, unif_w=0)
+        loss = moco_losses.combine(contr_w=args.moco_contr_w, align_w=args.moco_align_w, unif_w=args.moco_unif_w)
 
         # measure accuracy and record loss
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
@@ -320,10 +374,8 @@ def train(train_loader, model, optimizer, epoch, args):
             progress.display(i)
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
 
 
 class AverageMeter(object):
