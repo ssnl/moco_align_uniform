@@ -74,7 +74,7 @@ class MoCo(nn.Module):
 
         # create the queue
         self.register_buffer("queue", torch.randn(dim, K))
-        self.queue = nn.functional.normalize(self.queue, dim=0)
+        self.queue = F.normalize(self.queue, dim=0)
 
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
@@ -160,7 +160,7 @@ class MoCo(nn.Module):
 
         # compute query features
         q = self.encoder_q(im_q)  # queries: NxC
-        q = nn.functional.normalize(q, dim=1)
+        q = F.normalize(q, dim=1)
 
         # compute key features
         with torch.no_grad():  # no gradient to keys
@@ -170,37 +170,66 @@ class MoCo(nn.Module):
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
             k = self.encoder_k(im_k)  # keys: NxC
-            k = nn.functional.normalize(k, dim=1)
+            k = F.normalize(k, dim=1)
 
             # undo shuffle
             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
-        # compute logits
-        # Einstein sum is more intuitive
-        # positive logits: Nx1
-        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        # negative logits: NxK
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+        moco_loss_ctor_dict = {}
 
-        # logits: Nx(1+K)
-        logits_contr = torch.cat([l_pos, l_neg], dim=1)
+        # lazyily computed & cached!
+        def get_q_bdot_k():
+            if not hasattr(get_q_bdot_k, 'result'):
+                get_q_bdot_k.result = (q * k).sum(dim=1)
+            assert get_q_bdot_k.result._version == 0
+            return get_q_bdot_k.result
 
-        # apply temperature
-        logits_contr /= self.contr_tau
+        # lazyily computed & cached!
+        def get_q_dot_queue():
+            if not hasattr(get_q_dot_queue, 'result'):
+                get_q_dot_queue.result = q @ self.queue.clone().detach()
+            assert get_q_dot_queue.result._version == 0
+            return get_q_dot_queue.result
 
-        # loss_contr
-        loss_contr = F.cross_entropy(logits_contr, self.scalar_label.expand(logits_contr.shape[0]))
+        # l_contrastive
+        if self.contr_tau is not None:
+            # compute logits
+            # Einstein sum is more intuitive
+            # positive logits: Nx1
+            l_pos = get_q_bdot_k().unsqueeze(-1)
+            # negative logits: NxK
+            l_neg = get_q_dot_queue()
 
-        # loss_align
-        loss_align = None
+            # logits: Nx(1+K)
+            logits = torch.cat([l_pos, l_neg], dim=1)
 
-        # loss_unif
-        loss_unif = None
+            # apply temperature
+            logits /= self.contr_tau
+
+            moco_loss_ctor_dict['logits_contr'] = logits
+            moco_loss_ctor_dict['loss_contr'] = F.cross_entropy(logits, self.scalar_label.expand(logits.shape[0]))
+
+        # l_align
+        if self.align_alpha is not None:
+            if self.align_alpha == 2:
+                moco_loss_ctor_dict['loss_align'] = 2 - 2 * get_q_bdot_k().mean()
+            elif self.align_alpha == 1:
+                moco_loss_ctor_dict['loss_align'] = (q - k).norm(dim=1, p=2).mean()
+            else:
+                moco_loss_ctor_dict['loss_align'] = (2 - 2 * get_q_bdot_k()).pow(self.align_alpha / 2).mean()
+
+        # l_uniform
+        if self.unif_t is not None:
+            sq_dists = torch.cat([
+                (2 - 2 * get_q_dot_queue()).flatten(),
+                torch.pdist(q, p=2).pow(2),
+            ])
+            moco_loss_ctor_dict['loss_unif'] = sq_dists.mul(-self.unif_t).exp().mean().log()
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k)
 
-        return MoCoLosses(loss_contr=loss_contr, logits_contr=logits_contr, loss_align=loss_align, loss_unif=loss_unif)
+        return MoCoLosses(**moco_loss_ctor_dict)
 
 
 # utils

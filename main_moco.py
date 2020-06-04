@@ -238,6 +238,14 @@ def main_worker(index, args):
 
     # create model
     print("=> creating model '{}'".format(args.arch))
+    loss_terms = []
+    if args.moco_contr_w != 0:
+        loss_terms.append(f"{args.moco_contr_w:g} * loss_contrastive(tau={args.moco_contr_tau:g})")
+    if args.moco_align_w != 0:
+        loss_terms.append(f"{args.moco_align_w:g} * loss_align(alpha={args.moco_align_alpha:g})")
+    if args.moco_unif_w != 0:
+        loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform(t={args.moco_unif_t:g})")
+    print(f'=> Optimize:\n\t{"\n\t + ".join(loss_terms)}')
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
         args.moco_dim, args.moco_k, args.moco_m,
@@ -296,7 +304,7 @@ def main_worker(index, args):
             transforms.RandomApply([moco.loader.GaussianBlur([.1, 2.])], p=0.5),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize
+            normalize,
         ]
     else:
         # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
@@ -306,7 +314,7 @@ def main_worker(index, args):
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize
+            normalize,
         ]
 
     train_dataset = datasets.ImageFolder(
@@ -344,12 +352,63 @@ def main_worker(index, args):
 def train(train_loader, model, optimizer, epoch, args):
     batch_time = utils.AverageMeter('Time', '6.3f')
     data_time = utils.AverageMeter('Data', '6.3f')
-    losses = utils.AverageMeter('Loss', '.4g')
-    top1 = utils.AverageMeter('Acc@1', '6.2f')
-    top5 = utils.AverageMeter('Acc@5', '6.2f')
-    progress = ProgressMeter(
+
+    loss_meters = []
+    loss_updates = []
+
+    meter = utils.AverageMeter('Total Loss', '.4e')
+    loss_updates.append((lambda m: lambda _, l_total, bs: m.update(l_total, bs))(meter))  # lam for closure
+    loss_meters.extend([meter, utils.ProgressMeter.BR])
+
+    if args.moco_contr_w != 0:
+        meter = utils.AverageMeter('Contr-Loss', '.4e')
+        acc1 = utils.AverageMeter('Contr-Acc1', '6.2f')
+        acc5 = utils.AverageMeter('Contr-Acc5', '6.2f')
+
+        def f(meter, macc1, macc5):  # closure
+            def accuracy(output, target=0, topk=(1,)):
+                """Computes the accuracy over the k top predictions for the specified values of k"""
+                with torch.no_grad():
+                    maxk = max(topk)
+                    batch_size = output.size(0)
+
+                    _, pred = output.topk(maxk, 1, True, True)
+                    pred = pred.t()
+                    correct = (pred == 0)
+
+                    res = []
+                    for k in topk:
+                        correct_k = correct[:k].view(-1).float().sum()
+                        res.append(correct_k.mul_(100.0 / batch_size))
+                    return res
+
+            def update(losses, _, bs):
+                meter.update(losses.loss_contr, bs)
+                acc1, acc5 = accuracy(losses.logits_contr, topk=(1, 5))
+                macc1.update(acc1, bs)
+                macc5.update(acc5, bs)
+
+            return update
+
+        loss_updates.append(f(meter, acc1, acc5))
+        loss_meters.extend([meter, acc1, acc5, utils.ProgressMeter.BR])
+
+    if args.moco_align_w != 0:
+        meter = utils.AverageMeter('Align-Loss', '.4e')
+        loss_updates.append((lambda m: lambda losses, _, bs: m.update(losses.loss_align, bs))(meter))  # lam for closure
+        loss_meters.append(meter)
+
+    if args.moco_unif_w != 0:
+        meter = utils.AverageMeter('Unif-Loss', '.4e')
+        loss_updates.append((lambda m: lambda losses, _, bs: m.update(losses.loss_align))(meter))  # lam for closure
+        loss_meters.append(meter)
+
+    if len(loss_meters) and loss_meters[-1] == utils.ProgressMeter.BR:
+        loss_meters = loss_meters[:-1]
+
+    progress = utils.ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
+        [batch_time, data_time] + loss_meters,
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
@@ -365,47 +424,29 @@ def train(train_loader, model, optimizer, epoch, args):
 
         # compute losses
         moco_losses = model(im_q=images[0], im_k=images[1])
-        loss = moco_losses.combine(contr_w=args.moco_contr_w, align_w=args.moco_align_w, unif_w=args.moco_unif_w)
+        total_loss = moco_losses.combine(contr_w=args.moco_contr_w, align_w=args.moco_align_w, unif_w=args.moco_unif_w)
 
-        # measure accuracy and record loss
-        # acc1/acc5 are (K+1)-way contrast classifier accuracy
-        losses.update(loss.item(), images[0].size(0))
-        acc1, acc5 = accuracy(moco_losses.logits_contr, scalar_target=0, topk=(1, 5))
-        top1.update(acc1[0], images[0].size(0))
-        top5.update(acc5[0], images[0].size(0))
+        # record loss
+        if args.index == 0:
+            bs = images[0].shape[0]
+            for update_fn in loss_updates:
+                update_fn(moco_losses, total_loss, bs)
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
         optimizer.step()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % args.print_freq == 0:
+        if i % args.print_freq == 0 and args.index == 0:
             progress.display(i)
 
 
 def save_checkpoint(state, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-
-
-class ProgressMeter(object):
-    def __init__(self, num_batches, meters, prefix=""):
-        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
-        self.meters = meters
-        self.prefix = prefix
-
-    def display(self, batch):
-        entries = [self.prefix + self.batch_fmtstr.format(batch)]
-        entries += [str(meter) for meter in self.meters]
-        print('\t'.join(entries))
-
-    def _get_batch_fmtstr(self, num_batches):
-        num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
 
 def adjust_learning_rate(optimizer, epoch, args):
