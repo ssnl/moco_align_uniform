@@ -26,6 +26,9 @@ import torchvision.models as models
 import moco.loader
 import moco.builder
 
+import utils
+
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -339,11 +342,11 @@ def main_worker(index, args):
 
 
 def train(train_loader, model, optimizer, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
+    batch_time = utils.AverageMeter('Time', '6.3f')
+    data_time = utils.AverageMeter('Data', '6.3f')
+    losses = utils.AverageMeter('Loss', '.4g')
+    top1 = utils.AverageMeter('Acc@1', '6.2f')
+    top5 = utils.AverageMeter('Acc@5', '6.2f')
     progress = ProgressMeter(
         len(train_loader),
         [batch_time, data_time, losses, top1, top5],
@@ -386,30 +389,6 @@ def train(train_loader, model, optimizer, epoch, args):
 
 def save_checkpoint(state, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
-        return fmtstr.format(**self.__dict__)
 
 
 class ProgressMeter(object):
