@@ -290,6 +290,28 @@ def main_worker(index, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
+    train_loader = create_data_loader(args)
+
+    for epoch in range(args.start_epoch, args.epochs):
+        if args.distributed:
+            train_loader.sampler.set_epoch(epoch)
+        adjust_learning_rate(optimizer, epoch, args)
+
+        # train for one epoch
+        train(train_loader, model, optimizer, epoch, args)
+
+        if (args.distributed and args.rank == 0) or (args.index == 0):
+            save_filename = os.path.join(args.save_folder, 'checkpoint_{:04d}.pth.tar'.format(epoch))
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'optimizer' : optimizer.state_dict(),
+            }, filename=save_filename)
+            print(f"saved to '{save_filename}'")
+
+
+def create_data_loader(args):
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -331,23 +353,7 @@ def main_worker(index, args):
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    for epoch in range(args.start_epoch, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
-        adjust_learning_rate(optimizer, epoch, args)
-
-        # train for one epoch
-        train(train_loader, model, optimizer, epoch, args)
-
-        if (args.distributed and args.rank == 0) or (args.index == 0):
-            save_filename = os.path.join(args.save_folder, 'checkpoint_{:04d}.pth.tar'.format(epoch))
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'optimizer' : optimizer.state_dict(),
-            }, filename=save_filename)
-            print(f"saved to '{save_filename}'")
+    return train_loader
 
 
 def train(train_loader, model, optimizer, epoch, args):
