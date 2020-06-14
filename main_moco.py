@@ -254,7 +254,8 @@ def main_worker(index, args):
             loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform_no_intra_batch(t={args.moco_unif_t:g})")
         else:
             loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform(t={args.moco_unif_t:g})")
-    print(f'=> Optimize:\n\t{"\n\t + ".join(loss_terms)}')
+    loss_terms = "\n\t + ".join(loss_terms)
+    print(f"=> Optimize:\n\t{loss_terms}")
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
         args.moco_dim, args.moco_k, args.moco_m,
