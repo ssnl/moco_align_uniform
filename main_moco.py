@@ -102,6 +102,8 @@ parser.add_argument('--moco-unif-w', default=1, type=float,
                     help='uniform weight (default: 1)')
 parser.add_argument('--moco-unif-t', default=3, type=float,
                     help='uniformity t (default: 3)')
+parser.add_argument('--moco-unif-no-intra-batch', action='store_true',
+                    help='do not use intra-batch distances in uniformity loss')
 
 # options for moco v2
 parser.add_argument('--mlp', action='store_true',
@@ -135,6 +137,8 @@ def main():
 
     if args.moco_unif_w != 0:
         save_folder_terms.append(f'unif{args.moco_unif_w:g}t{args.moco_unif_t:g}')
+        if args.moco_unif_no_intra_batch:
+            save_folder_terms[-1] += '(no-intra-batch)'
     else:
         args.moco_unif_t = None
 
@@ -245,7 +249,10 @@ def main_worker(index, args):
     if args.moco_align_w != 0:
         loss_terms.append(f"{args.moco_align_w:g} * loss_align(alpha={args.moco_align_alpha:g})")
     if args.moco_unif_w != 0:
-        loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform(t={args.moco_unif_t:g})")
+        if args.moco_unif_no_intra_batch:
+            loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform_no_intra_batch(t={args.moco_unif_t:g})")
+        else:
+            loss_terms.append(f"{args.moco_unif_w:g} * loss_uniform(t={args.moco_unif_t:g})")
     print(f'=> Optimize:\n\t{"\n\t + ".join(loss_terms)}')
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
@@ -253,6 +260,7 @@ def main_worker(index, args):
         contr_tau=args.moco_contr_tau,
         align_alpha=args.moco_align_alpha,
         unif_t=args.moco_unif_t,
+        unif_intra_batch=not args.moco_unif_no_intra_batch,
         mlp=args.mlp)
     print(model)
 

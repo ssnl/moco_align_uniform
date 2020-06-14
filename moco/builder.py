@@ -33,7 +33,7 @@ class MoCo(nn.Module):
     https://arxiv.org/abs/1911.05722
     """
     def __init__(self, base_encoder, dim=128, K=65536, m=0.999,
-                 contr_tau=0.07, align_alpha=None, unif_t=None, mlp=False):
+                 contr_tau=0.07, align_alpha=None, unif_t=None, unif_intra_batch=True, mlp=False):
         r"""
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
@@ -57,6 +57,7 @@ class MoCo(nn.Module):
 
         # l_unif
         self.unif_t = unif_t
+        self.unif_intra_batch = unif_intra_batch
 
         # create the encoders
         # num_classes is the output fc dimension
@@ -220,10 +221,9 @@ class MoCo(nn.Module):
 
         # l_uniform
         if self.unif_t is not None:
-            sq_dists = torch.cat([
-                (2 - 2 * get_q_dot_queue()).flatten(),
-                torch.pdist(q, p=2).pow(2),
-            ])
+            sq_dists = (2 - 2 * get_q_dot_queue()).flatten()
+            if self.unif_intra_batch:
+                sq_dists = torch.cat([sq_dists, torch.pdist(q, p=2).pow(2)])
             moco_loss_ctor_dict['loss_unif'] = sq_dists.mul(-self.unif_t).exp().mean().log()
 
         # dequeue and enqueue
