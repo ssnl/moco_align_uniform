@@ -113,13 +113,13 @@ python main_lincls.py \
         <img src="https://latex.codecogs.com/svg.latex?\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2)" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$2\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu2)$}" />
+        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$2\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu2)$}" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$}" />
+        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$}" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$4\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu4)$}" />
+        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$4\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu4)$}" />
       </th>
    </tr>
    <tr>
