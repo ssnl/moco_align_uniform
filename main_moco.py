@@ -417,7 +417,7 @@ def train(train_loader, model, optimizer, epoch, args):
 
     if args.moco_unif_w != 0:
         meter = utils.AverageMeter('Unif-Loss', '.4e')
-        loss_updates.append((lambda m: lambda losses, _, bs: m.update(losses.loss_align))(meter))  # lam for closure
+        loss_updates.append((lambda m: lambda losses, _, bs: m.update(losses.loss_unif))(meter))  # lam for closure
         loss_meters.append(meter)
 
     if len(loss_meters) and loss_meters[-1] == utils.ProgressMeter.BR:
@@ -476,23 +476,6 @@ def adjust_learning_rate(optimizer, epoch, args):
             lr *= 0.1 if epoch >= milestone else 1.
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-
-
-def accuracy(output, scalar_target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = output.size(0)
-
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(scalar_target)
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
 
 
 if __name__ == '__main__':
