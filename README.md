@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2020 Tongzhou Wang -->
 # Momentum Contrast (MoCo) with Alignment and Uniformity Losses
 
-This directory contains a PyTorch implementation of a MoCo variant using the Alignment and Uniformity losses proposed in paper: **Understanding Contrastive Representation Learning through Alignment and Uniformity on the Hypersphere**:
+This directory contains a PyTorch implementation of a MoCo variant using the Alignment and Uniformity losses proposed in paper: [**Understanding Contrastive Representation Learning through Alignment and Uniformity on the Hypersphere**](https://arxiv.org/abs/2005.10242):
 ```
 @article{wang2020hypersphere,
   title={Understanding Contrastive Representation Learning through Alignment and Uniformity on the Hypersphere},
@@ -10,6 +10,8 @@ This directory contains a PyTorch implementation of a MoCo variant using the Ali
   year={2020}
 }
 ```
+
+More code for this paper can be found at [this repository](https://github.com/SsnL/align_uniform).
 
 ## Requirements
 ```
@@ -97,7 +99,10 @@ python main_lincls.py \
     [PATH_TO_DATASET]
 ```
 
-## Reference Validation Accuracy (ImageNet-100)
+## Reference Validation Accuracy
+
+### ImageNet-100
+
 <table>
    <tr>
       <th rowspan="2"></th>
@@ -178,6 +183,32 @@ python main_lincls.py \
       <td>75.5%</td>
       <td>75.74%</td>
       <td>73.84%</td>
+   </tr>
+</table>
+
+### ImageNet
+
+<table>
+   <tr>
+      <th rowspan="2"></th>
+      <th rowspan="2">Batch Size</th>
+      <th rowspan="2">Initial LR</th>
+      <th colspan="5">Loss Formula</th>
+   </tr>
+   <tr>
+      <th>
+        <img src="https://latex.codecogs.com/svg.latex?\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2)" />
+      </th>
+      <th>
+        <img src="https://latex.codecogs.com/svg.latex?3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)" />
+      </th>
+   </tr>
+   <tr>
+      <th><div>Strong&nbsp;Aug.</div>+<div>MLP&nbsp;Head</div>+<div>Cosine&nbsp;LR</div></th>
+      <th>256</th>
+      <th>0.03</th>
+      <td>67.5%±0.1% (MoCo&nbsp;v2,&nbsp;from&nbsp;<a href="https://github.com/facebookresearch/moco/tree/3631be074a0a14ab85c206631729fe035e54b525#linear-classification">here</a>)</td>
+      <td><strong>67.694%</strong></td>
    </tr>
 </table>
 
