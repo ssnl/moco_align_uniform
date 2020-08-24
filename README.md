@@ -212,6 +212,8 @@ python main_lincls.py \
    </tr>
 </table>
 
+The encoder checkpoint with full ImageNet 67.694% validation top1 accuracy can be found [here](https://github.com/SsnL/moco_align_uniform/releases/download/v1.0-checkpoints/mocov2_imagenet.pth.tar).
+
 ***Note***: Numbers with <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular}" align="top" /> are computed without setting `--moco-unif-no-intra-batch`.
 
 ## Acknowledgements and Disclaimer
