@@ -99,7 +99,7 @@ python main_lincls.py \
     [PATH_TO_DATASET]
 ```
 
-## Reference Validation Accuracy
+## Reference Validation Accuracy and Trained Checkpoints
 
 ### ImageNet-100
 
