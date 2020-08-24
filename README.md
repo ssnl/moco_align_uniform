@@ -214,6 +214,27 @@ python main_lincls.py \
 
 ***Note***: Numbers with <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular}" align="top" /> are computed without setting `--moco-unif-no-intra-batch`.
 
+## Trained ImageNet Checkpoints
+
+We provide the ResNet50 encoder checkpoint trained on the full ImageNet with <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$\end{tabular}" align="top" />. The encoder is the one achieving 67.694% ImageNet validation top1 accuracy in the table above.
+
+With [PyTorch Hub](https://pytorch.org/docs/stable/hub.html), you may load them without even downloading this repository or the checkpoint:
+```py
+encoder = torch.hub.load('SsnL/moco_align_uniform:align_uniform', 'imagenet_resnet50_encoder')
+```
+
+To load the encoder with the trained linear classifier, use:
+```py
+encoder = torch.hub.load('SsnL/moco_align_uniform:align_uniform', 'imagenet_resnet50_encoder',
+                         with_linear_clf=True)
+```
+
+See [here](./hubconf.py#L11-L24) for more details.
+
+
+Additionally, you may download the saved checkpoints with more information from [here](https://github.com/SsnL/moco_align_uniform/releases/tag/v1.0-checkpoints).
+
+
 ## Acknowledgements and Disclaimer
 The code is modified from [the official MoCo repository](https://github.com/facebookresearch/moco).
 
