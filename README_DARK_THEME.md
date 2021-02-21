@@ -16,7 +16,7 @@ More code for this paper can be found at [this repository](https://github.com/Ss
 ---
 **NOTE**
 
-Under GitHub's new dark mode theme, the equations in this README may not be readable. If you have such problems, please instead see [this README file](./README_DARK_THEME.md) with identical content and lightly colored equations.  Unfortunately, as of February 2021, GitHub does not yet provide a way to detect user theme.
+This README is for better equation readability under GitHub's new dark mode theme. If you are using the light mode, please use [this README](./README.md).
 
 ---
 
@@ -51,7 +51,7 @@ Optionally, you may add argument `--subset [PATH_TO_CLASS_SUBSET_FILE]` to speci
 
 This implementation only supports **multi-gpu**, **DistributedDataParallel** training, which is faster and simpler; single-gpu or DataParallel training is not supported.
 
-+ To train a ResNet-50 encoder with loss <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$\vspace{-5pt}\\{\color{white}.}\\\end{tabular}" align="middle" /> (default) on a 4-GPU machine, run:
++ To train a ResNet-50 encoder with loss <img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$\vspace{-5pt}\\{\color{black}.}\\\end{tabular} " align="middle" /> (default) on a 4-GPU machine, run:
 
   ```sh
   python main_moco.py \
@@ -71,22 +71,22 @@ This implementation only supports **multi-gpu**, **DistributedDataParallel** tra
     </tr>
     <tr>
       <td><code>--moco-align-w AW --moco-align-alpha AALPHA</code></td>
-      <td><img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}$\texttt{AW}\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu\texttt{AALPHA})$\vspace{-8pt}\\{\color{white}.}\\\end{tabular}" align="middle" /></td>
+      <td><img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}$\texttt{AW}\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu\texttt{AALPHA})$\vspace{-8pt}\\{\color{black}.}\\\end{tabular}" align="middle" /></td>
       <td><code>AW=3 AALPHA=2</code></td>
     </tr>
     <tr>
       <td><code>--moco-unif-w UW --moco-unif-t UT</code></td>
-      <td><img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}$\texttt{UW}\cdot\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu\texttt{UT})$\vspace{-8pt}\\{\color{white}.}\\\end{tabular}" align="middle" /></td>
+      <td><img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}$\texttt{UW}\cdot\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu\texttt{UT})$\vspace{-8pt}\\{\color{black}.}\\\end{tabular}" align="middle" /></td>
       <td><code>UW=1 UT=3</code></td>
     </tr>
     <tr>
       <td><code>--moco-contr-w CW --moco-contr-tau CTAU</code></td>
-      <td><img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}$\texttt{CW}\cdot\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu\texttt{CTAU})$\vspace{-8pt}\\{\color{white}.}\\\end{tabular}" align="middle" /></td>
+      <td><img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}\color{White}$\texttt{CW}\cdot\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu\texttt{CTAU})$\vspace{-8pt}\\{\color{black}.}\\\end{tabular}" align="middle" /></td>
       <td><code>CW=0 CTAU=0.07</code></td>
     </tr>
   </table>
 
-  ***Note***: By default, <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular}" align="top" /> uses the "intra-batch" version, where the negative pair distances include both the distance between samples in each batch and features in queue, as well as pairwise distances within each batch ([Equation 18](https://arxiv.org/pdf/2005.10242.pdf#page=23)). The command-line flag `--moco-unif-no-intra-batch` switches to the form without using pairwise distances within batch ([Equation 17](https://arxiv.org/pdf/2005.10242.pdf#page=23)).
+  ***Note***: By default, <img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}{\color{black}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular} " align="top" /> uses the "intra-batch" version, where the negative pair distances include both the distance between samples in each batch and features in queue, as well as pairwise distances within each batch ([Equation 18](https://arxiv.org/pdf/2005.10242.pdf#page=23)). The command-line flag `--moco-unif-no-intra-batch` switches to the form without using pairwise distances within batch ([Equation 17](https://arxiv.org/pdf/2005.10242.pdf#page=23)).
 
 + This repository also includes several techniques MoCo v2 added. To include those, set `--aug-plus --mlp --cos`, which turns on stronger augmentation, MLP header, and cosine learning rate scheduling.
 
@@ -119,19 +119,19 @@ python main_lincls.py \
    </tr>
    <tr>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.07) " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.07)" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2) " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2)" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$2\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu2)$} " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\shortstack{$2\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu2)$} " />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$} " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\shortstack{$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$} " />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\shortstack{$4\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu4)$} " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\shortstack{$4\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)$\\$+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu4)$} " />
       </th>
    </tr>
    <tr>
@@ -204,10 +204,10 @@ python main_lincls.py \
    </tr>
    <tr>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2) " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}\mathcal{L}_\mathsf{contrastive}(\tau\mkern1.5mu{=}\mkern1.5mu0.2)" />
       </th>
       <th>
-        <img src="https://latex.codecogs.com/svg.latex?3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3) " />
+        <img src="https://latex.codecogs.com/svg.latex?\color{White}3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3) " />
       </th>
    </tr>
    <tr>
@@ -219,11 +219,11 @@ python main_lincls.py \
    </tr>
 </table>
 
-***Note***: Numbers with <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular}" align="top" /> are computed without setting `--moco-unif-no-intra-batch`.
+***Note***: Numbers with <img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}{\color{black}.}\vspace{-4pt}\\$\mathcal{L}_\mathsf{uniform}$\end{tabular} " align="top" /> are computed without setting `--moco-unif-no-intra-batch`.
 
 ## Trained ImageNet Checkpoints
 
-We provide the ResNet50 encoder checkpoint trained on the full ImageNet with <img src="https://latex.codecogs.com/svg.latex?\begin{tabular}[b]{@{}c@{}}{\color{white}.}\vspace{-4pt}\\$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$\end{tabular}" align="top" />. The encoder is the one achieving 67.694% ImageNet validation top1 accuracy in the table above.
+We provide the ResNet50 encoder checkpoint trained on the full ImageNet with <img src="https://latex.codecogs.com/svg.latex?\color{White}\begin{tabular}[b]{@{}c@{}}{\color{Black}.}\vspace{-4pt}\\$3\cdot\mathcal{L}_\mathsf{align}(\alpha\mkern1.5mu{=}\mkern1.5mu2)+\hspace{3pt}\mathcal{L}_\mathsf{uniform}(t\mkern1.5mu{=}\mkern1.5mu3)$\end{tabular}" align="top" />. The encoder is the one achieving 67.694% ImageNet validation top1 accuracy in the table above.
 
 With [PyTorch Hub](https://pytorch.org/docs/stable/hub.html), you may load them without even downloading this repository or the checkpoint:
 ```py
