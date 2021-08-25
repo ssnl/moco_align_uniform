@@ -3,17 +3,13 @@
 
 This directory contains a PyTorch implementation of a MoCo variant using the Alignment and Uniformity losses proposed in paper: [**Understanding Contrastive Representation Learning through Alignment and Uniformity on the Hypersphere**](https://arxiv.org/abs/2005.10242):
 ```
-@article{wang2020hypersphere,
+@inproceedings{wang2020hypersphere,
   title={Understanding Contrastive Representation Learning through Alignment and Uniformity on the Hypersphere},
   author={Wang, Tongzhou and Isola, Phillip},
-  booktitle={Proceedings of the 37th International Conference on Machine Learning},
+  booktitle={International Conference on Machine Learning},
+  organization={PMLR},
   pages={9929--9939},
-  year={2020},
-  editor={Hal Daumé III and Aarti Singh},
-  volume={119},
-  series={Proceedings of Machine Learning Research},
-  month={13--18 Jul},
-  publisher={PMLR},
+  year={2020}
 }
 ```
 
